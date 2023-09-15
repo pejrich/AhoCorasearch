@@ -6,7 +6,7 @@ defmodule AhoCorasearch.MixProject do
       app: :aho_corasearch,
       description:
         "Elixir lib for Aho-Corasick string searching. Uses a Rust-based NIF for greatly improved performance.",
-      version: "0.1.0",
+      version: "0.2.0",
       elixir: "~> 1.15",
       name: "AhoCorasearch",
       source_url: "https://github.com/pejrich/AhoCorasearch",
@@ -14,7 +14,14 @@ defmodule AhoCorasearch.MixProject do
         main: "AhoCorasearch",
         extras: ["Usage.md"]
       ],
-      start_permanent: Mix.env() == :prod,
+      package: [
+        name: "aho_corasearch",
+        licenses: ["MIT"],
+        links: %{"GitHub" => "https://github.com/pejrich/AhoCorasearch"},
+        source_url: "https://github.com/pejrich/AhoCorasearch",
+        files: ~w(lib priv native .formatter.exs mix.exs README* LICENSE*
+                 CHANGELOG*)
+      ],
       rustler_crates: rustler_crates(),
       deps: deps(),
       elixirc_paths: elixirc_paths(Mix.env())
@@ -42,6 +49,7 @@ defmodule AhoCorasearch.MixProject do
 
   defp deps do
     [
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       {:makeup_html, ">= 0.0.0", only: :dev, runtime: false},
       {:rustler, "~> 0.29"},
       {:benchee, "~> 1.0", only: [:test, :dev]},
