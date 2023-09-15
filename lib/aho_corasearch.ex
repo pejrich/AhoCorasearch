@@ -68,7 +68,9 @@ defmodule AhoCorasearch do
     do: Tree.new(patterns, opts)
 
   @doc """
-  Searches the given string, against the given tree. This is one of two available ways to search. This is the faster of the two methods, but also might give more unexpected data. It will return matches anywhere they appear in the string(assuming the rules still abide by the tree's match configuration), but it has no notion of words. So partial and subwords will match. If you're looking for only full word matches, look at the `AhoCorasearch.word_search/3`, or use the option `word_search: true` which will filter out any matches that are not complete words(starting and ending at a word boundary).
+  Searches the given string, against the given tree.
+
+  This is one of two available ways to search. This is the faster of the two methods, but also might give more unexpected data. It will return matches anywhere they appear in the string(assuming the rules still abide by the tree's match configuration), but it has no notion of words. So partial and subwords will match. If you're looking for only full word matches, look at the `AhoCorasearch.word_search/3`, or use the option `word_search: true` which will filter out any matches that are not complete words(starting and ending at a word boundary).
 
   The inputs are:
   * `tree`: `AhoCorasearch.Tree.t()` - The tree that was build with `build_tree/2-3`
@@ -92,7 +94,9 @@ defmodule AhoCorasearch do
     do: Tree.search(tree, string, opts)
 
   @doc """
-  This is a convenience function for doing a word based search. Internally it just sets the `word_search` option to true for `search/3`, so either can be used as they're the same.
+  This is a convenience function for doing a word based search.
+
+  Internally it just sets the `word_search` option to true for `search/3`, so either can be used as they're the same.
   """
   @spec search(Tree.t(), binary, overlap: boolean) :: matches
   def word_search(tree, string, opts \\ [overlap: false]),
@@ -100,6 +104,7 @@ defmodule AhoCorasearch do
 
   @doc """
   Returns the number of bytes that the tree is using on the native/Rust side.
+
   This does not account for any memory being stored on the Beam side, which hold the duplicate map
   Total size(beam + native) can be approximated with:
   `:erts_debug.flat_size(tree) + AhoCorasearch.heap_bytes(tree)`
