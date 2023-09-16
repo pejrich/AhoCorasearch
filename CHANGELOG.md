@@ -11,3 +11,9 @@ Features:
 Features:
 
   - Docs/Readme updates
+
+## 0.3.0 (2023-09-16)
+
+Features:
+
+  - Allow arbitrary terms as pattern IDs

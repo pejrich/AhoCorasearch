@@ -21,7 +21,7 @@ patterns = [{"is", 0}, {"was", 1}, {"an", 2}, {"am", 3}]
 
 This function returns an opaque handle to a Rust resource. You can store it just like you would with a Ref or PID. It can be stored in ETS, a GenServer, an Agent, etc. But similar to a PID, it can't be stored in module attributes or anything compile time as it's  a reference to a runtime object in memory. To use it, you pass it to the `search/2-3` function.
 
-```
+```elixir
 AhoCorasearch.search(tree, "what is this example you're showing me?")
 
 # => [{5, 7, [0]}, {10, 12, [0]}, {15, 17, [3]}]
@@ -29,26 +29,40 @@ AhoCorasearch.search(tree, "what is this example you're showing me?")
 
 The format of the results is the following: 
 ```
-{
-  integer: start_index, 
-  integer: end_index, 
-  integer | list(integer): ID | IDs
-}
+@type results :: list({
+  start_index: pos_integer(), 
+  end_index: pos_integer(),
+  id_or_ids: pos_integer() | list(pos_integer()) 
+})
 ```
 
-> #### Unique vs non-unique(default) {: .info}
+> #### Terms for pattern IDs {: .info}
 >
-> Passing `unique: true` to `build_tree/3` will give you single integer IDs in the results
+> Starting in version 0.3.0, you can now assign arbitrary terms as pattern IDs
 > 
-> [{5, 7, 0}, ...]
+> `build_tree([{"a", %{key: :a}}, {"b", :b}, {"c", 123}])`
 > 
-> By default(without passing `unique`, or by passing `unique: false`) you can have a pattern like this `[{"a", 1}, {"a", 2}]`
+> This works for both unique and non-unique trees
 > 
-> The result for "a" would be `[{X, Y, [1, 2]}, ...]`
+> This has a slight performance impact, so if it's all the same, you're better off using unique trees, with integer IDs(the IDs don't need to be unique).
+>
+> Anywhere else in the documentation that refers to "integer IDs" or demonstrates with integer values, will all work with any term, not just integers
 
-So we can use it as follows:
+#### Unique vs non-unique(default)
 
-```
+Passing `unique: true` to `build_tree/3` will give you single integer IDs in the results
+
+[{5, 7, 0}, ...]
+
+By default(without passing `unique`, or by passing `unique: false`) you can have a pattern like this `[{"a", 1}, {"a", 2}]`
+
+The result for "a" would be `[{X, Y, [1, 2]}, ...]`
+
+#### Using the result's index offsets
+
+You can use the result's index offsets as follow
+
+```elixir
 string = "what is this example you're showing me?"
 results = AhoCorasearch.search(tree, "what is this example you're showing me?")
 # => [{5, 7, [0]}, {10, 12, [0]}, {15, 17, [3]}]
@@ -60,16 +74,18 @@ end)
 
 `"what [is] th[is] ex[am]ple you're showing me?"`
 
+## Match Kinds
+
 There are different matching types you can use to vary the results. These are all required to be set during the tree building phase, not the searching phase.
 
-### `standard`
+### `standard`(default)
 
-`standard` will return the first match it comes across(not overlapping by default, but can be set to overlapping with a option on the `search/3` function `[overlap: true]`). I know it's confusing, but `standard` is not the default match_kind, `leftmost_longest` is, an explanation for why is further below.
+`standard` will return the first match it comes across(not overlapping by default, but can be set to overlapping with a option on the `search/3` function `[overlap: true]`).
 
 So, `["pine", "cone", "econ"]` against `"pinecone"` would match `"pine"` and `"cone"`, or all 3 when using `overlap: true`.
 
-```
-iex(127)> {:ok, tree} = AhoCorasearch.build_tree(Enum.with_index(["pine", "cones", "pinecones"]), match_kind: :standard)
+```elixir
+iex(127)> {:ok, tree} = AhoCorasearch.build_tree(Enum.with_index(["pine", "cones", "pinecones"]))
 {:ok, "#AhoCorasearch.Tree<0.884206865.3714318337.202303>"}
 iex(128)> AhoCorasearch.search(tree, "pinecones")
 [{0, 4, [0]}, {4, 9, [1]}]
@@ -77,7 +93,7 @@ iex(129)> AhoCorasearch.search(tree, "pinecones", overlap: true)
 [{0, 4, [0]}, {0, 9, [2]}, {4, 9, [1]}]
 ```
 
-### `leftmost_longest`(default match_kind)
+### `leftmost_longest`
 
 `leftmost_longest` will match, you guessed it, the rightmost, shortest. No, it will match whatever it finds first in the string(leftmost) that is the longest(of all matches starting at that location). To demonstrate we'll use the patterns `["pin", "pine", "inecones", "con", "cone", "cones"]`
 
@@ -316,16 +332,20 @@ aho_corasearch_standard_word_search_long_text          63.61 - 3.17x slower +10.
 
 ### What are the most performant settings?
 
-If you really want to eek out the most performance this library can give, the following settings: `[unique: true, insensitive: false]` will bypass a lot of the additional work that gets done in elixir. These settings will generally only be different by a meaningful amount if you are expecting a lot of matches(because `unique: false` does a map lookup for each match), and don't care about the searching being case insensitive(this allows the lib to skip doing a downcase pass on the search string, which saves time for long search strings).
+If you really want to eek out the most performance this library can give, the following settings: `[unique: true, insensitive: false]`, plus using _only_ integers for pattern IDs will bypass a lot of the additional work that gets done in elixir. These settings will generally only be different by a meaningful amount if you are both:
+  * expecting a lot of matches
+    * `unique: false`(or `unique: true` with non-integer pattern IDs) does a map lookup for each match
+  * don't care about the searching being case insensitive
+    * this allows the lib to skip doing a downcase pass on the search string, which saves time for long search strings
 
 "Best" case settings:
 ```
-AhoCorasearch.build_tree(patterns, unique: true, insensitive: false, match_kind: :standard)
+AhoCorasearch.build_tree(patterns, unique: true, insensitive: false)
 ```
 
 "Worst" case settings:
 ```
-AhoCorasearch.build_tree(patterns, match_kind: :standard)
+AhoCorasearch.build_tree(patterns)
 ```
 
 (the `match_kind` doesn't actually matter much for performance generally. I'm using `standard` because along with `overlap: true` it returns the most matches, which does change performance a bit)
@@ -356,24 +376,8 @@ aho_corasearch_worst_case_short_text      156.65 K - 2.45x slower +3.78 μs
 
 #### General performance usage
 
-Overall the tree generated by `build_tree/2` is safe and fast to pass between processes, as well as safe to use from multiple procesess concurrently. Because the tree itself is stored in Rust, passing the tree from one process to another does not require copying the underlying Rust memory, only the reference handle which is tiny. The only edge case would be if you had huge numbers of duplicated strings in the tree, then there is some memory stored in the Beam side to hold the mapping of IDs, but this is a `%{integer => list(integer)}` map, so is really not a concern unless the numbers get massive. As always benchmarking your particular use case is the best way to know.
+Overall the tree generated by `build_tree/2` is safe and fast to pass between processes, as well as safe to use from multiple procesess concurrently. Because the tree itself is stored in Rust, passing the tree from one process to another does not require copying the underlying Rust memory, only the reference handle which is tiny. When using non-integer pattern IDs, or non-unique trees, a mapping from an integer to the returned pattern IDs is stored in Beam memory, and does get copied when the tree is passed between processes. You can check the Beam memory size(copied when passed) with `:erts_debug.flat_size(tree)` and the Rust memory size(not copied when passed) with `AhoCorasearch.heap_bytes(tree)`. As always benchmarking your particular use case is the best way to know.
 
-### Oddities / Known bugs
+### Other
 
-Currently the ability to pass in non-unique patterns is handled purely in Elixir as the underlying Rust lib requires unique patterns, so the Elixir code rolls up any duplicates and passes a single value to Rust in order to build the tree, and then resolves these back into multiple IDs after a search is done. Generally this causes no problems, but be aware that the logic merely aggregates the duplicates under the first key/ID pair, which can cause some unexpected behaviour in the following edge case(note the different return values for the "b" match based on which ID it overlaps with):
-
-```
-iex(53)> {:ok, tree} = AhoCorasearch.build_tree([{"a", 0}, {"a", 1}, {"b", 1}])
-iex(54)> AhoCorasearch.search(tree, "ab")
-[{0, 1, [0, 1]}, {1, 2, [1]}]
-```
-```
-iex(56)> {:ok, tree} = AhoCorasearch.build_tree([{"a", 0}, {"a", 1}, {"b", 0}])
-iex(57)> AhoCorasearch.search(tree, "ab")
-[{0, 1, [0, 1]}, {1, 2, [0, 1]}]
-```
-
-You'll see that in the first example, even though a/1 and b/1 overlapped, because "b" was the first key to have ID: 1(a/1 was rolled into a/0), it returns only [1] in the results. When "b" is changed to 0, it's ID is now the same as the ID being used for "a", so "a" and "b" will have the same IDs([0, 1]). If you want some specific functionality that this conflicts with, you're best bet is passing `unique: true` to `AhoCorasearch.build_tree/2` and managing the ID resolution yourself.
-
-
-Also, this code was my first foray in the Rust language, and my first time using Rustler to create Elixir NIFs, so there's likely a few things that could be done differently/better with that code. That being said it's fairly short code, with really no complex logic, and has been very stable in the time i've used it. However, if you have any suggestions for improvements, please let me know and I'll be happy to take a look into it.
+This code was my first foray in the Rust language, and my first time using Rustler to create Elixir NIFs, so there's likely a few things that could be done differently/better with that code. That being said it's fairly short code, with really no complex logic, and has been very stable in the time i've used it. However, if you have any suggestions for improvements, please let me know and I'll be happy to take a look into it.

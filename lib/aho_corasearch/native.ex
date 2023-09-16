@@ -1,4 +1,5 @@
 defmodule AhoCorasearch.Native do
+  @moduledoc false
   use Rustler, otp_app: :aho_corasearch, crate: :aho_corasearch_nif
 
   # @spec build_tree(list())

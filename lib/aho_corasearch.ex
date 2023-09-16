@@ -7,7 +7,7 @@ defmodule AhoCorasearch do
   @type pattern :: binary
   @type start :: integer
   @type stop :: integer
-  @type id :: integer
+  @type id :: term
   @type patterns :: [{pattern, id}]
   @type match :: {start, stop, id} | {start, stop, list(id)}
   @type matches :: list(match)
@@ -31,7 +31,7 @@ defmodule AhoCorasearch do
   The options it accepts are:
   * `unique` - Whether the keys in the pattern list are unique or not. This determines what the result tuple will look like. `{integer, integer, integer}` for unique trees, and `{integer, integer, list(integer)}` for non-unique trees. Defaults to `false`.
   * `insensitive` - If the matching should be case insensitive. Insensitivity is acheived by downcasing the patterns, and also downcasing the search text. This has a minor performance impact, but in most cases a negligible one. Defaults to `true`.
-  * `match_kind` - There are 3 different matching options, but they must be chosen a tree building time, not at search time. The options are `standard`, `leftmost_longest`, or `leftmost_first`. Defaults to `leftmost_longest`.
+  * `match_kind` - There are 3 different matching options, but they must be chosen a tree building time, not at search time. The options are `standard`, `leftmost_longest`, or `leftmost_first`. Defaults to `standard`.
 
   Given the following patterns:
   ```elixir
@@ -60,8 +60,8 @@ defmodule AhoCorasearch do
 
   The examples above demonstrate the return value for a non-unique tree. The results is `{start_index, end_index, ids}`. Not that the indexes are in bytes, so you'll want to use `:binary.part/3` to extract substrings, not `String.slice/3`. The ID part must be an integer, but it does not need to be unique. Multiple keys can use the same ID. If multiple patterns are given with the same key and ID, the result will be repeated, for example: `[{34, 35, [1, 1]}]`. IDs are returned in the same order they are given, so for patterns: `[{"a", 3}, {"a", 1}, {"a", 2}, {"a", 1}]`, an "a" in the search text would give the result: `{X, Y, [3, 1, 2, 1]}`
   """
-  @default_options [unique: false, insensitive: true, match_kind: :leftmost_longest]
-  @type match_kind :: :leftmost_longest | :leftmost_first | :standard
+  @default_options [unique: false, insensitive: true, match_kind: :standard]
+  @type match_kind :: :standard | :leftmost_longest | :leftmost_first
   @type options :: [unique: boolean, insensitive: boolean, match_kind: match_kind()]
   @spec build_tree(patterns, options) :: {:ok, tree} | {:error, term}
   def build_tree(patterns, opts \\ @default_options),

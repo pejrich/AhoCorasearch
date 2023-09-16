@@ -4,7 +4,7 @@ defmodule Typespecs do
       @type pattern :: binary
       @type start :: integer
       @type stop :: integer
-      @type id :: integer
+      @type id :: term()
       @type patterns :: [{pattern, id}] | [binary]
       @type match :: {start, stop, id} | {start, stop, list(id)}
       @type matches :: list(match)

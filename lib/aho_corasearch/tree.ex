@@ -1,26 +1,38 @@
 defmodule AhoCorasearch.Tree do
+  @moduledoc false
   alias __MODULE__
   alias AhoCorasearch.{TreeBuilder, Native}
 
-  defstruct [:ref, :tree_ref, :match_kind, insensitive: true, unique: false, dups: %{}]
-  @type match_kind :: :leftmost_longest | :leftmost_first | :standard
+  defstruct [
+    :ref,
+    :tree_ref,
+    :match_kind,
+    integer_ids: false,
+    insensitive: true,
+    unique: false,
+    map: %{}
+  ]
+
+  @type match_kind :: :standard | :leftmost_longest | :leftmost_first
   @type t :: %Tree{
           ref: binary(),
           tree_ref: reference(),
           match_kind: match_kind,
           insensitive: boolean(),
+          integer_ids: boolean(),
           unique: boolean(),
-          dups: %{integer => list(integer)}
+          map: %{integer => term() | list(term())}
         }
 
   defdelegate new(patterns, opts), to: TreeBuilder
 
   def search(
         %Tree{
-          dups: dups,
+          map: map,
           tree_ref: tree,
           match_kind: mk,
           unique: unique,
+          integer_ids: integer_ids,
           insensitive: insensitive
         },
         string,
@@ -32,7 +44,7 @@ defmodule AhoCorasearch.Tree do
     string = maybe_downcase(string, insensitive)
 
     do_search(tree, string, mk, overlap)
-    |> fix_dups(unique, dups)
+    |> fix_dups(map, unique: unique, int: integer_ids)
     |> maybe_filter(string, word_search)
   end
 
@@ -44,10 +56,13 @@ defmodule AhoCorasearch.Tree do
   defp maybe_downcase(string, true), do: AhoCorasearch.Native.downcase(string)
   defp maybe_downcase(string, _), do: string
 
-  defp fix_dups(res, true, _), do: res
+  defp fix_dups(res, _, unique: true, int: true), do: res
 
-  defp fix_dups(res, false, dups),
-    do: Enum.map(res, fn {s, e, id} -> {s, e, [id | dups[id] || []]} end)
+  defp fix_dups(res, map, unique: true, int: false),
+    do: Enum.map(res, fn {s, e, id} -> {s, e, Map.get(map, id, id)} end)
+
+  defp fix_dups(res, map, unique: false, int: false),
+    do: Enum.map(res, fn {s, e, id} -> {s, e, Map.get(map, id, [id])} end)
 
   defp do_search(tree, string, :leftmost_longest, _), do: Native.leftmost_find_iter(tree, string)
   defp do_search(tree, string, :leftmost_first, _), do: Native.leftmost_find_iter(tree, string)
