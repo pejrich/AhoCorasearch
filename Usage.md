@@ -99,7 +99,7 @@ iex(129)> AhoCorasearch.search(tree, "pinecones", overlap: true)
 
 
 ```
-iex(137)> {:ok, tree} = AhoCorasearch.build_tree(Enum.with_index(["pin", "pine", "inecones", "con", "cone", "cones"]))
+iex(137)> {:ok, tree} = AhoCorasearch.build_tree(Enum.with_index(["pin", "pine", "inecones", "con", "cone", "cones"]), match_kind: :leftmost_longest)
 {:ok, "#AhoCorasearch.Tree<0.884206865.3714318337.204014>"}
 iex(128)> AhoCorasearch.search(tree, "pinecones")
 [{0, 4, [1]}, {4, 9, [4]}]
